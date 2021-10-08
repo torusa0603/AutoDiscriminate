@@ -114,10 +114,11 @@ def doWatershedMethod(nimgRaw, nimgBindMask, nstrResultFolderPath, nbShowFlag, n
   #オブジェクトごとにラベル（番号）を振っていく
   if nbDetail:
     arr_labels_high, arr_markers, data_high, center_high = cv2.connectedComponentsWithStats(img_sure_fg)
+    center_high = center_high[1 : (arr_labels_high + 1), : ]
   else:
     arr_labels_high, arr_markers = cv2.connectedComponents(img_sure_fg)
+    center_high = "None"
   arr_labels_high -= 1
-  center_high = center_high[1 : (arr_labels_high + 1), : ]
 #    i_number_of_color_radius = DistincteLabels(img, nLabels, markers)
   if nbShowFlag:
     plt.imshow(arr_markers)
@@ -141,7 +142,8 @@ def doWatershedMethod(nimgRaw, nimgBindMask, nstrResultFolderPath, nbShowFlag, n
   if b_ret:
     i_number_of_color_and_radius_high += i_number_of_color_and_radius_low
     arr_labels_high += (arr_labels_low)
-    center_high = np.append(center_high, center_low, axis=0)
+    if nbDetail:
+      center_high = np.append(center_high, center_low, axis=0)
   if nbShowFlag:
     plt.imshow(markers_watershed)
     plt.show()
@@ -239,4 +241,4 @@ def CalculateRadius(niNamberOfPixels, niMaxRadius, ndNumberPerOneMiliMeter):
     
 
 if __name__ == '__main__':
-  main(True, "", True)
+  main(False, "", False)
