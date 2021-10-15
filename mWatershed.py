@@ -14,7 +14,7 @@ def main(nbShowFlag, nstrResultFolderPath, nbDetail):
     img_raw = cv2.imread(fn)
     if nbShowFlag:
       showPicture(img_raw, 'Sorce')
-###  使用する可能性があるためコメントとして残す  ###################
+###########  使用する可能性があるためコメントとして残す  ############
 #    #生画像をグレイスケールに変換
 #    img_gray = cv2.cvtColor(img_raw, cv2.COLOR_BGR2GRAY)
 #    img_gray = adjust(img_gray, 3.0, 0.0)
@@ -68,9 +68,6 @@ def main(nbShowFlag, nstrResultFolderPath, nbDetail):
           cv2.imwrite(os.path.join(nstrResultFolderPath, "img/result.png"), img_raw)
       if nbShowFlag:
         showPicture(img_raw, 'img_marked')
-
-
-
 
 
 def doWatershedMethod(nimgRaw, nimgBindMask, nstrResultFolderPath, nbShowFlag, nbDetail, niCount):
@@ -138,16 +135,15 @@ def doWatershedMethod(nimgRaw, nimgBindMask, nstrResultFolderPath, nbShowFlag, n
     plt.clf()
   img_opening_closing_bgr = cv2.cvtColor(img_opening_closing, cv2.COLOR_GRAY2BGR)
   markers_watershed = cv2.watershed(img_opening_closing_bgr, arr_markers)
-
-
-#  img_opening_closing[markers_watershed == -1] = 0
-#  img_opening_closing[markers_watershed == 1] = 0
-#  nLabels_1, nMarkers_1 = cv2.connectedComponents(img_opening_closing)
-#  if nbShowFlag:
-#    showPicture(img_opening_closing, 'img_opening_closing')
+  markers_watershed[markers_watershed == -1] = 1
+  if nbShowFlag:
+    plt.imshow(markers_watershed)
+    plt.show()
+    plt.close()
+  #calcCircularity(markers_watershed)
 
   
-  i_number_of_color_and_radius_high, npdata_number_of_color_and_radius_high = DistincteLabels(nimgRaw, i_number_labels_high, markers_watershed, nstrResultFolderPath)
+  i_number_of_color_and_radius_high, npdata_number_of_color_and_radius_high, i_number_labels_high, center_high = DistincteLabels(nimgRaw, i_number_labels_high, markers_watershed, nstrResultFolderPath, nbShowFlag, nbDetail, center_high)
   nimgRaw[markers_watershed == -1] = [0,255,0]
   img_opening_closing[markers_watershed != 1] = 0
   if nbShowFlag:
@@ -159,10 +155,6 @@ def doWatershedMethod(nimgRaw, nimgBindMask, nstrResultFolderPath, nbShowFlag, n
     npdata_number_of_color_and_radius_high = np.append(npdata_number_of_color_and_radius_high, npdata_number_of_color_and_radius_low, axis=0)
     if nbDetail:
       center_high = np.append(center_high, center_low, axis=0)
-  if nbShowFlag:
-    plt.imshow(markers_watershed)
-    plt.show()
-    plt.close()
   i_number_labels_high -= 1
   return True, i_number_labels_high, center_high, i_number_of_color_and_radius_high, npdata_number_of_color_and_radius_high
 
@@ -174,9 +166,18 @@ def doWatershedMethod(nimgRaw, nimgBindMask, nstrResultFolderPath, nbShowFlag, n
 #    return np.clip(img_dst, 0, 255).astype(np.uint8)
 ##########################################################
 
-def calcCircularity(contour, area):
-  perimeter = cv2.arcLength(contour, True)
-  i_circle_level = (int)((4.0 * np.pi * area / (perimeter * perimeter)) * 100)
+def calcCircularity(nlsLabelTable, niLabel, nbShowFlag):
+  nlsLabelTableCopy = nlsLabelTable.copy()
+  nlsLabelTableCopy[nlsLabelTable != niLabel] = 0
+  nlsLabelTableCopy[nlsLabelTable == niLabel] = 1
+  if nbShowFlag:
+    plt.imshow(nlsLabelTableCopy)
+    plt.show()
+    plt.clf()
+  contour , hierarchy = cv2.findContours(nlsLabelTableCopy, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+  perimeter = cv2.arcLength(contour[0], True)
+  area = cv2.contourArea(contour[0])
+  i_circle_level = (int)((4.0 * np.pi *area / (perimeter * perimeter) )* 100)
   return i_circle_level
 
 
@@ -196,43 +197,50 @@ def showPicture(nimgPicture, nstrTitle):
   #ウィンドウ情報を消去する
   cv2.destroyAllWindows()
 
-def DistincteLabels(nimgSrc, niLabelNumber, nlsLabelTable, nstrResultFolderPath):
+def DistincteLabels(nimgSrc, niLabelNumber, nlsLabelTable, nstrResultFolderPath, nbShowFlag, nbDetail, nCenterPoint):
   m_dicSettingElements={"NumberPerOneMiliMeter" : "", "MaxRadius" : ""} #設定ファイルから読み込む変数群を格納した辞書型変数 
   cHandleJsonfile.ReadElementsFromJsonfile(os.path.join(nstrResultFolderPath,"Setting.json"), 'mWaterShed', m_dicSettingElements)
   i_number_of_color_and_radius = np.zeros([6, m_dicSettingElements["MaxRadius"]], dtype=np.int) #(赤,黄,緑,青,紫,白)ごとの個数
+  i_label_number = niLabelNumber
   npdata_number_of_color_and_radius = np.array([[0, 0]])
   for label in range(2, niLabelNumber + 1):
-    i_label_group_index = np.where(nlsLabelTable == label) #現ラベル数のブロブ情報
-    i_array_label_bgr = nimgSrc[i_label_group_index] #rgb情報
-    i_width = i_array_label_bgr.shape[0] #所属ブロブ個数
-    #半径を決定
-    i_ret_radius = CalculateRadius(i_width, m_dicSettingElements["MaxRadius"], m_dicSettingElements["NumberPerOneMiliMeter"])
-    img_label_bgr = np.zeros((1, i_width, 3), dtype='uint8') #rgb情報を格納するnumpy型変数
-    #opencvのメソッドを使用するために一列の長い画像として情報を格納する
-    img_label_bgr[0, :, :] = i_array_label_bgr 
-    #rgb→hsv変換
-    img_hsv = cv2.cvtColor(img_label_bgr, cv2.COLOR_BGR2HSV)
-    #hsvそれぞれの平均値を算出
-    h, s, v = cv2.split(img_hsv)
-    i_h_mean = h.mean()
-    i_s_mean = s.mean()
-    i_v_mean = v.mean()
-#    #デバックに使用する    
-#    b, g, r = cv2.split(img_label_bgr)
-#    i_b_mean = b.mean()
-#    i_g_mean = g.mean()
-#    i_r_mean = r.mean()
-    #明度が高く彩度が低いブロブを白色とし、その条件外のブロブはhueを使用して色を決定させる
-    if i_v_mean > 100 and i_s_mean < 100:
-      i_ret_color = 5
+    i_circle_level = calcCircularity(nlsLabelTable, label, nbShowFlag)
+    if (i_circle_level >= 75):
+      i_label_group_index = np.where(nlsLabelTable == label) #現ラベル数のブロブ情報
+      i_array_label_bgr = nimgSrc[i_label_group_index] #rgb情報
+      i_width = i_array_label_bgr.shape[0] #所属ブロブ個数
+      #半径を決定
+      i_ret_radius = CalculateRadius(i_width, m_dicSettingElements["MaxRadius"], m_dicSettingElements["NumberPerOneMiliMeter"])
+      img_label_bgr = np.zeros((1, i_width, 3), dtype='uint8') #rgb情報を格納するnumpy型変数
+      #opencvのメソッドを使用するために一列の長い画像として情報を格納する
+      img_label_bgr[0, :, :] = i_array_label_bgr 
+      #rgb→hsv変換
+      img_hsv = cv2.cvtColor(img_label_bgr, cv2.COLOR_BGR2HSV)
+      #hsvそれぞれの平均値を算出
+      h, s, v = cv2.split(img_hsv)
+      i_h_mean = h.mean()
+      i_s_mean = s.mean()
+      i_v_mean = v.mean()
+#      #デバックに使用する    
+#      b, g, r = cv2.split(img_label_bgr)
+#      i_b_mean = b.mean()
+#      i_g_mean = g.mean()
+#      i_r_mean = r.mean()
+      #明度が高く彩度が低いブロブを白色とし、その条件外のブロブはhueを使用して色を決定させる
+      if i_v_mean > 100 and i_s_mean < 100:
+        i_ret_color = 5
+      else:
+        i_ret_color = DistincteColor(i_h_mean)
+      i_number_of_color_and_radius[i_ret_color][i_ret_radius - 1] += 1
+      npdata_color_and_radius = np.array([i_ret_color, i_ret_radius - 1])
+      npdata_number_of_color_and_radius = np.append(npdata_number_of_color_and_radius, np.array([npdata_color_and_radius]), axis=0)
     else:
-      i_ret_color = DistincteColor(i_h_mean)
-    i_number_of_color_and_radius[i_ret_color][i_ret_radius - 1] += 1
-    npdata_color_and_radius = np.array([i_ret_color, i_ret_radius - 1])
-    npdata_number_of_color_and_radius = np.append(npdata_number_of_color_and_radius, np.array([npdata_color_and_radius]), axis=0)
+      if nbDetail:
+        nCenterPoint = np.delete(nCenterPoint, label - 2 - (niLabelNumber - i_label_number), axis = 0)
+      i_label_number -= 1
   npdata_number_of_color_and_radius = npdata_number_of_color_and_radius[1 : len(npdata_number_of_color_and_radius), : ]
   #(色, 半径)それぞれの個数を配列として返す
-  return i_number_of_color_and_radius, npdata_number_of_color_and_radius
+  return i_number_of_color_and_radius, npdata_number_of_color_and_radius, i_label_number, nCenterPoint
 
 def DistincteColor(niHue):
   #hueの値を(赤,黄,緑,青,紫)に区分けする為の区切り数値
