@@ -175,6 +175,9 @@ def calcCircularity(nlsLabelTable, niLabel, nbShowFlag):
     plt.show()
     plt.clf()
   contour , hierarchy = cv2.findContours(nlsLabelTableCopy, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+  if len(contour) == 0:
+    #演習がとれないのなら0とする
+    return 0
   perimeter = cv2.arcLength(contour[0], True)
   area = cv2.contourArea(contour[0])
   i_circle_level = (int)((4.0 * np.pi *area / (perimeter * perimeter) )* 100)
