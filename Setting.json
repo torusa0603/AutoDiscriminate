@@ -1,1 +1,1 @@
-{"mWaterShed": {"NumberPerOneMiliMeter": 7.6, "MaxRadius" : 20}}
+{"mWaterShed": {"NumberPerOneMiliMeter": 10.0, "MaxRadius" : 20,"circle_level_threshold":60, "white_satuation":30}}
