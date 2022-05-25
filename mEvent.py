@@ -82,7 +82,7 @@ class Publisher(object):
 # Every handler must accept two arguments; a sender and an event-specific 
 # parameter.
 def handle_foo(sender, earg):
-    print (earg)
+    print (earg[0])
 
 
 if __name__ == '__main__':
@@ -91,4 +91,4 @@ if __name__ == '__main__':
     # Add event handler
     pub.evt_foo += handle_foo
     # This will cause Publiser.evt_foo event.
-    pub.foo("fooooooooooooooooooooooooooooooooooooooooooooo!!!")
+    pub.foo(["fooooooooooooooooooooooooooooooooooooooooooooo!!!",""])

@@ -10,11 +10,11 @@ m_dicSettingElements={"NumberPerOneMiliMeter" : "", "MaxRadius" : "","circle_lev
 
 #-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------#
 ### メイン関数
-def main(nbShowFlag, nstrResultFolderPath, nbDetail, nbLimitFileName):
-  if nstrResultFolderPath == "":
-    nstrResultFolderPath = "."
+def main(nbShowFlag, nstrExeFolderPath, nbDetail, nbLimitFileName):
+  if nstrExeFolderPath == "":
+    nstrExeFolderPath = "."
   #設定ファイルを読み込む
-  cHandleJsonfile.ReadElementsFromJsonfile(os.path.join(nstrResultFolderPath,"Setting.json"), 'mWaterShed', m_dicSettingElements)
+  cHandleJsonfile.ReadElementsFromJsonfile(os.path.join(nstrExeFolderPath,"Setting.json"), 'mWaterShed', m_dicSettingElements)
   str_file_name = ""
   if nbLimitFileName:
     #img.pngというファイル名のみ解析する
@@ -23,7 +23,7 @@ def main(nbShowFlag, nstrResultFolderPath, nbDetail, nbLimitFileName):
   else:
     #PNGファイルなら何でも解析する
     str_file_name = "img/*.png"
-  for fn in glob.glob(os.path.join(nstrResultFolderPath, str_file_name)):
+  for fn in glob.glob(os.path.join(nstrExeFolderPath, str_file_name)):
     #画像の読み込み
     img_raw = cv2.imread(fn)
     if nbShowFlag:
@@ -71,7 +71,7 @@ def main(nbShowFlag, nstrResultFolderPath, nbDetail, nbLimitFileName):
     #デッドロック対策のカウンターをセット
     i_count = 1
     #WaterShedを行う
-    b_ret, i_number_labels, arr_center,  i_number_of_color_and_radius, npdata_number_of_color_and_radius = doWatershedMethod(img_raw, img_bind_mask, nstrResultFolderPath, nbShowFlag, nbDetail, i_count)
+    b_ret, i_number_labels, arr_center,  i_number_of_color_and_radius, npdata_number_of_color_and_radius = doWatershedMethod(img_raw, img_bind_mask, nstrExeFolderPath, nbShowFlag, nbDetail, i_count)
     if b_ret:
       if nbDetail:
         color_band = ["R","Y","G","B","V","W"]
@@ -79,13 +79,13 @@ def main(nbShowFlag, nstrResultFolderPath, nbDetail, nbLimitFileName):
           cv2.putText(img_raw, "ID: " +str(i + 1),                                      ((int)(arr_center[i][0] - 40),(int)(arr_center[i][1] + 30)), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 0))
           cv2.putText(img_raw, "Color: " + color_band[npdata_number_of_color_and_radius[i][0]], ((int)(arr_center[i][0] - 40),(int)(arr_center[i][1] + 60)), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 0))
           cv2.putText(img_raw, "Size: " +str(npdata_number_of_color_and_radius[i][1]),  ((int)(arr_center[i][0] - 40),(int)(arr_center[i][1] + 90)), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 0))
-          cv2.imwrite(os.path.join(nstrResultFolderPath, "img/result.png"), img_raw)
+          cv2.imwrite(os.path.join(nstrExeFolderPath, "img/result.png"), img_raw)
       if nbShowFlag:
         showPicture(img_raw, 'img_marked')
     else:
       #0埋めのリストを作成する
       i_number_of_color_and_radius = np.zeros([6, m_dicSettingElements["MaxRadius"]], dtype=np.int)
-    np.savetxt(os.path.join(nstrResultFolderPath, "result/color_radius.csv"), i_number_of_color_and_radius, delimiter=",", fmt="%d")
+    np.savetxt(os.path.join(nstrExeFolderPath, "result/color_radius.csv"), i_number_of_color_and_radius, delimiter=",", fmt="%d")
 #-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------#
 
 
